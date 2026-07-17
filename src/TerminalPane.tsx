@@ -18,6 +18,8 @@ export function TerminalPane({ deckId, terminal, active, staged, splitCount, onS
   const termRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
+  const lastCols = useRef(0);
+  const lastRows = useRef(0);
   const [status, setStatus] = useState<"connecting" | "online" | "offline">(staged ? "offline" : "connecting");
 
   useEffect(() => {
@@ -65,6 +67,9 @@ export function TerminalPane({ deckId, terminal, active, staged, splitCount, onS
     const sendSize = (jiggle = false) => {
       if (disposed || socket?.readyState !== WebSocket.OPEN) return;
       fit.fit();
+      if (!jiggle && term.cols === lastCols.current && term.rows === lastRows.current) return;
+      lastCols.current = term.cols;
+      lastRows.current = term.rows;
       if (jiggle) {
         socket.send(JSON.stringify({ type: "resize", cols: Math.max(2, term.cols - 1), rows: term.rows }));
         resizeTimers.push(window.setTimeout(() => sendSize(), 100));
@@ -101,7 +106,13 @@ export function TerminalPane({ deckId, terminal, active, staged, splitCount, onS
       requestAnimationFrame(() => {
         try {
           fit.fit();
-          if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }));
+          if (term.cols !== lastCols.current || term.rows !== lastRows.current) {
+            if (socket?.readyState === WebSocket.OPEN) {
+              lastCols.current = term.cols;
+              lastRows.current = term.rows;
+              socket.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }));
+            }
+          }
         } catch {
           // The pane may have been removed during the resize frame.
         }
@@ -126,7 +137,11 @@ export function TerminalPane({ deckId, terminal, active, staged, splitCount, onS
     const t = termRef.current;
     if (!s || s.readyState !== WebSocket.OPEN || !f || !t) return;
     f.fit();
-    s.send(JSON.stringify({ type: "resize", cols: t.cols, rows: t.rows }));
+    if (t.cols !== lastCols.current || t.rows !== lastRows.current) {
+      lastCols.current = t.cols;
+      lastRows.current = t.rows;
+      s.send(JSON.stringify({ type: "resize", cols: t.cols, rows: t.rows }));
+    }
   }, []);
 
   useEffect(() => {
