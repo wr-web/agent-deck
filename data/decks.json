@@ -244,5 +244,58 @@
         "resumeCommand": ""
       }
     }
+  },
+  {
+    "id": "2902deba-52cb-48ec-a064-adc8021e699a",
+    "name": "23333",
+    "createdAt": "2026-07-17T13:41:26.853Z",
+    "updatedAt": "2026-07-17T13:41:32.354Z",
+    "layout": {
+      "type": "split",
+      "id": "2420c587-1d0e-4428-a40e-8ec7cd3588fb",
+      "direction": "vertical",
+      "ratio": 0.4367732558139535,
+      "first": {
+        "type": "pane",
+        "id": "f373824d-b918-4d0b-85cd-addd235f3330"
+      },
+      "second": {
+        "type": "split",
+        "id": "65825078-a272-4f2f-8c61-ec4f5705b8ff",
+        "direction": "horizontal",
+        "ratio": 0.5290519877675841,
+        "first": {
+          "type": "pane",
+          "id": "35f0fd2a-2b16-4727-9811-285dfa01be74"
+        },
+        "second": {
+          "type": "pane",
+          "id": "5fa731f7-7527-405d-9525-2723c0ed09a0"
+        }
+      }
+    },
+    "terminals": {
+      "f373824d-b918-4d0b-85cd-addd235f3330": {
+        "id": "f373824d-b918-4d0b-85cd-addd235f3330",
+        "title": "Shell 1",
+        "cwd": "/Users/rt",
+        "command": "",
+        "resumeCommand": ""
+      },
+      "35f0fd2a-2b16-4727-9811-285dfa01be74": {
+        "id": "35f0fd2a-2b16-4727-9811-285dfa01be74",
+        "title": "Shell 2",
+        "cwd": "/Users/rt",
+        "command": "",
+        "resumeCommand": ""
+      },
+      "5fa731f7-7527-405d-9525-2723c0ed09a0": {
+        "id": "5fa731f7-7527-405d-9525-2723c0ed09a0",
+        "title": "Shell 3",
+        "cwd": "/Users/rt",
+        "command": "",
+        "resumeCommand": ""
+      }
+    }
   }
 ]
