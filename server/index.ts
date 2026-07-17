@@ -135,7 +135,7 @@ app.use((error: unknown, _request: express.Request, response: express.Response, 
 });
 
 const server = app.listen(port, "127.0.0.1", () => {
-  console.log(`Agent Desk server: http://127.0.0.1:${port}`);
+  console.log(`Agent Deck server: http://127.0.0.1:${port}`);
 });
 
 const webSockets = new WebSocketServer({ server, path: "/ws" });

@@ -22,7 +22,7 @@ export function Home({ desks, busy, onCreate, onOpen, onDelete }: Props) {
   return (
     <main className="home-shell">
       <div className="home-noise" />
-      <header className="brand"><TerminalIcon size={22} /><span>AGENT DESK</span><small>LOCAL / {desks.length.toString().padStart(2, "0")}</small></header>
+      <header className="brand"><TerminalIcon size={22} /><span>AGENT DECK</span><small>LOCAL / {desks.length.toString().padStart(2, "0")}</small></header>
       <section className="home-hero">
         <p className="eyebrow">MULTI-AGENT WORKSPACE</p>
         <h1>One desk.<br /><em>Every agent.</em></h1>
