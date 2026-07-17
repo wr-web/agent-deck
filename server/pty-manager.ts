@@ -49,6 +49,20 @@ function isAgent(command: string) {
   return /(^|\/)(?:opencode|claude|codex|deepseek-tui|hermes)(?:\.exe)?(?:\s|$)/.test(command);
 }
 
+function isOpenCodeCommand(command: string) {
+  return /(^|\/)opencode(?:\.exe)?(?:\s|$)/.test(command);
+}
+
+async function latestOpenCodeSession(cwd: string) {
+  try {
+    const sessions = await listOpenCodeSessions(cwd);
+    return sessions[0]?.id || "";
+  } catch {
+    // OpenCode CLI may not be installed.
+    return "";
+  }
+}
+
 async function descendants(rootPid: number) {
   try {
     const { stdout } = await execFileAsync("ps", ["-axo", "pid=,ppid=,command="]);
@@ -107,20 +121,19 @@ export async function ensureSession(deckId: string, pane: TerminalSnapshot) {
   let savedResume = pane.resumeCommand === pane.command ? resumeFor(pane.command) : pane.resumeCommand;
   if (!savedResume) {
     const db = getPaneSession(deckId, pane.id);
-    if (db) {
-      savedResume = dbResume(db.agent, db.sessionId);
-      if (db.agent === "opencode" && !db.sessionId) {
-        try {
-          const sessions = await listOpenCodeSessions(db.cwd);
-          if (sessions.length > 0) savedResume = `opencode --session ${shellEscape(sessions[0].id)}`;
-        } catch {
-          savedResume = "opencode";
-        }
-      }
-    }
+    if (db) savedResume = dbResume(db.agent, db.sessionId);
   }
-  const resumeScript = `IFS= read -r AGENT_DESK_COMMAND; eval "$AGENT_DESK_COMMAND"; exec ${shellEscape(shell)} -l`;
-  const terminal = pty.spawn(shell, savedResume ? ["-l", "-c", resumeScript] : ["-l"], {
+  if (isOpenCodeCommand(savedResume) && !opencodeSessionId(savedResume)) {
+    // No pinned session (plain "opencode" / "opencode --continue"): resume the
+    // most recent session in the pane directory — the final state after any
+    // in-agent session changes (/sessions, fork, ...). Start fresh if none.
+    const latest = await latestOpenCodeSession(cwd);
+    savedResume = latest ? `opencode --session ${shellEscape(latest)}` : "opencode";
+  }
+  // Spawn the interactive login shell directly and inject the resume command as
+  // typed input (see launchResume). This works with any shell (fish, zsh, bash),
+  // unlike a POSIX-only `read`/`eval` wrapper script.
+  const terminal = pty.spawn(shell, ["-l"], {
     name: "xterm-256color",
     cols: 120,
     rows: 36,
@@ -242,25 +255,23 @@ export async function snapshotSession(deckId: string, pane: TerminalSnapshot): P
   const savedOpenCodeSession = opencodeSessionId(pane.resumeCommand);
   let resumeCommand = "";
   const agent = agentName(command);
-  if (agent) {
-    const sessionId = opencodeSessionId(command);
-    savePaneSession(deckId, pane.id, agent, sessionId, cwd, command);
-  }
-  if (isAgent(command) && /(^|\/)opencode(?:\.exe)?(?:\s|$)/.test(command) && (currentOpenCodeSession || savedOpenCodeSession)) {
-    resumeCommand = `opencode --session ${shellEscape(currentOpenCodeSession || savedOpenCodeSession)}`;
-  } else {
-    resumeCommand = resumeFor(command);
-  }
-  if (!resumeCommand && agent === "opencode") {
-    try {
-      const sessions = await listOpenCodeSessions(cwd);
-      if (sessions.length > 0) {
-        resumeCommand = `opencode --session ${shellEscape(sessions[0].id)}`;
-        savePaneSession(deckId, pane.id, "opencode", sessions[0].id, cwd, command);
-      }
-    } catch {
-      // OpenCode CLI may not be installed.
+  if (agent === "opencode") {
+    let sessionId = currentOpenCodeSession;
+    if (savedOpenCodeSession && savedOpenCodeSession !== currentOpenCodeSession) {
+      // A session pinned in settings that the running process has not consumed
+      // yet (the pane was not recreated since): honor the pin.
+      resumeCommand = `opencode --session ${shellEscape(savedOpenCodeSession)}`;
+      sessionId = savedOpenCodeSession;
+    } else {
+      // Follow the final state: in-agent operations like /sessions or fork
+      // change the current session without changing the process command line,
+      // so resolve the most recent session in the pane directory at launch time.
+      resumeCommand = "opencode --continue";
     }
+    savePaneSession(deckId, pane.id, agent, sessionId, cwd, command);
+  } else {
+    if (agent) savePaneSession(deckId, pane.id, agent, currentOpenCodeSession, cwd, command);
+    resumeCommand = resumeFor(command);
   }
   return {
     ...pane,
