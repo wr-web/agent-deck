@@ -9,6 +9,7 @@ type Props = {
   activePane: string;
   editMode: boolean;
   orientation: "horizontal" | "vertical";
+  splitCount: number;
   onSelect: (id: string) => void;
   onSplit: (id: string, ratio: number) => void;
   onRatio: (id: string, ratio: number) => void;
@@ -21,7 +22,7 @@ export function LayoutView(props: Props) {
   return <SplitNode {...props} node={node} />;
 }
 
-function PaneNode({ id, deck, persistedIds, activePane, editMode, orientation, onSelect, onSplit, onToggleOrientation }: Props & { id: string }) {
+function PaneNode({ id, deck, persistedIds, activePane, editMode, orientation, splitCount, onSelect, onSplit, onToggleOrientation }: Props & { id: string }) {
   const paneRef = useRef<HTMLDivElement>(null);
   const lineRef = useRef<HTMLDivElement>(null);
   const terminal = deck.terminals[id];
@@ -42,7 +43,7 @@ function PaneNode({ id, deck, persistedIds, activePane, editMode, orientation, o
 
   return (
     <div className="pane-node" ref={paneRef} onMouseMove={movePreview}>
-      <TerminalPane deckId={deck.id} terminal={terminal} active={activePane === id} staged={!persistedIds.has(id)} onSelect={() => onSelect(id)} />
+      <TerminalPane deckId={deck.id} terminal={terminal} active={activePane === id} staged={!persistedIds.has(id)} splitCount={splitCount} onSelect={() => onSelect(id)} />
       {editMode && (
         <div className={`cut-surface ${orientation}`} onClick={split} onContextMenu={(event) => { event.preventDefault(); onToggleOrientation(); }}>
           <div className="cut-line" ref={lineRef}><span>{orientation === "vertical" ? "VERTICAL" : "HORIZONTAL"}</span></div>

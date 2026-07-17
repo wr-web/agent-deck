@@ -41,6 +41,7 @@ export function DeckView({ initial, onHome, onStored }: Props) {
   const [saving, setSaving] = useState(false);
   const [recreating, setRecreating] = useState(false);
   const [terminalGeneration, setTerminalGeneration] = useState(0);
+  const [splitCount, setSplitCount] = useState(0);
   const [notice, setNotice] = useState("");
   const [settings, setSettings] = useState(false);
   const [opencodeSessions, setOpenCodeSessions] = useState<Array<{ id: string; title: string }>>([]);
@@ -159,6 +160,7 @@ export function DeckView({ initial, onHome, onStored }: Props) {
       };
     });
     setActivePane(newId);
+    setSplitCount((count) => count + 1);
   };
 
   const closePane = (id: string) => {
@@ -187,7 +189,7 @@ export function DeckView({ initial, onHome, onStored }: Props) {
           </div>
         </header>
         <div className={`layout-canvas ${editMode ? "editing" : ""}`}>
-          <LayoutView key={terminalGeneration} node={deck.layout} deck={deck} persistedIds={persistedIds} activePane={activePane} editMode={editMode} orientation={orientation} onSelect={setActivePane} onSplit={split} onToggleOrientation={() => setOrientation((value) => value === "vertical" ? "horizontal" : "vertical")} onRatio={(id, ratio) => updateDeck((current) => ({ ...current, layout: updateNode(current.layout, id, (node) => ({ ...node, ratio }) as LayoutNode) }))} />
+          <LayoutView key={terminalGeneration} node={deck.layout} deck={deck} persistedIds={persistedIds} activePane={activePane} editMode={editMode} orientation={orientation} splitCount={splitCount} onSelect={setActivePane} onSplit={split} onToggleOrientation={() => setOrientation((value) => value === "vertical" ? "horizontal" : "vertical")} onRatio={(id, ratio) => updateDeck((current) => ({ ...current, layout: updateNode(current.layout, id, (node) => ({ ...node, ratio }) as LayoutNode) }))} />
         </div>
         {notice && <div className="toast"><span>●</span>{notice}</div>}
       </div>

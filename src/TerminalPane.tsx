@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
@@ -9,12 +9,15 @@ type Props = {
   terminal: TerminalInfo;
   active: boolean;
   staged: boolean;
+  splitCount: number;
   onSelect: () => void;
 };
 
-export function TerminalPane({ deckId, terminal, active, staged, onSelect }: Props) {
+export function TerminalPane({ deckId, terminal, active, staged, splitCount, onSelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
+  const fitRef = useRef<FitAddon | null>(null);
+  const socketRef = useRef<WebSocket | null>(null);
   const [status, setStatus] = useState<"connecting" | "online" | "offline">(staged ? "offline" : "connecting");
 
   useEffect(() => {
@@ -51,9 +54,11 @@ export function TerminalPane({ deckId, terminal, active, staged, onSelect }: Pro
     term.loadAddon(fit);
     term.open(hostRef.current);
     termRef.current = term;
+    fitRef.current = fit;
 
     const protocol = location.protocol === "https:" ? "wss" : "ws";
     let socket: WebSocket | null = null;
+    socketRef.current = null;
     let reconnectTimer: number | undefined;
     const resizeTimers: number[] = [];
     let disposed = false;
@@ -70,6 +75,7 @@ export function TerminalPane({ deckId, terminal, active, staged, onSelect }: Pro
     const connect = () => {
       setStatus("connecting");
       socket = new WebSocket(`${protocol}://${location.host}/ws?deck=${encodeURIComponent(deckId)}&pane=${encodeURIComponent(terminal.id)}`);
+      socketRef.current = socket;
       socket.addEventListener("open", () => {
         setStatus("online");
         sendSize();
@@ -113,6 +119,27 @@ export function TerminalPane({ deckId, terminal, active, staged, onSelect }: Pro
       termRef.current = null;
     };
   }, [deckId, staged, terminal.id]);
+
+  const resizeJiggle = useCallback(() => {
+    const s = socketRef.current;
+    const f = fitRef.current;
+    const t = termRef.current;
+    if (!s || s.readyState !== WebSocket.OPEN || !f || !t) return;
+    f.fit();
+    s.send(JSON.stringify({ type: "resize", cols: Math.max(2, t.cols - 1), rows: t.rows }));
+    setTimeout(() => {
+      if (s.readyState === WebSocket.OPEN) {
+        f?.fit();
+        s.send(JSON.stringify({ type: "resize", cols: t.cols, rows: t.rows }));
+      }
+    }, 100);
+  }, []);
+
+  useEffect(() => {
+    if (!staged && splitCount > 0) {
+      setTimeout(() => resizeJiggle(), 50);
+    }
+  }, [splitCount, staged, resizeJiggle]);
 
   useEffect(() => {
     if (active) termRef.current?.focus();
