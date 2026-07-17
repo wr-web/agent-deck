@@ -2,7 +2,7 @@
 
 A local browser workspace for running several agent CLIs and shells in one saved, resizable desk.
 
-[![Demo](docs/demo-thumb.png)](https://github.com/wr-web/agent-deck/releases/tag/v0.0.0)
+![demo](docs/demo.gif)
 
 ## Run
 
