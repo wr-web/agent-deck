@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import { WebSocketServer } from "ws";
 import { deleteDeck, getDeck, listDecks, saveDeck } from "./store.js";
-import { attachClient, killDeck, killSession, listOpenCodeSessions, snapshotSession } from "./pty-manager.js";
+import { attachClient, killDeck, killSession, listOpenCodeSessions, snapshotSession, deleteDeckSessions, deletePaneSession } from "./pty-manager.js";
 import type { Deck, LayoutNode, TerminalSnapshot } from "./types.js";
 
 const app = express();
@@ -75,7 +75,7 @@ app.put("/api/decks/:id", async (request, response, next) => {
     const incoming = (request.body.terminals || {}) as Record<string, TerminalSnapshot>;
     const ids = paneIds(layout);
     const removed = paneIds(current.layout).filter((id) => !ids.includes(id));
-    removed.forEach((id) => killSession(current.id, id));
+    removed.forEach((id) => { killSession(current.id, id); deletePaneSession(current.id, id); });
     const snapshots = await Promise.all(
       ids.map(async (id, index) => {
         const pane = incoming[id] || current.terminals[id] || {
@@ -116,6 +116,7 @@ app.post("/api/decks/:id/recreate", async (request, response, next) => {
 app.delete("/api/decks/:id", async (request, response, next) => {
   try {
     killDeck(request.params.id);
+    deleteDeckSessions(request.params.id);
     await deleteDeck(request.params.id);
     response.status(204).end();
   } catch (error) {

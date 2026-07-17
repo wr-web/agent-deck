@@ -288,7 +288,7 @@ function closeSessionClients(session: Session) {
   session.clients.clear();
 }
 
-export { deleteDeckSessions };
+export { deleteDeckSessions, deletePaneSession };
 
 export function killSession(deckId: string, paneId: string) {
   const key = keyFor(deckId, paneId);
@@ -298,7 +298,6 @@ export function killSession(deckId: string, paneId: string) {
     session.pty.kill();
   }
   sessions.delete(key);
-  deletePaneSession(deckId, paneId);
 }
 
 export function killDeck(deckId: string) {
@@ -309,5 +308,4 @@ export function killDeck(deckId: string) {
       sessions.delete(key);
     }
   }
-  deleteDeckSessions(deckId);
 }
