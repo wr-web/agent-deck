@@ -103,7 +103,7 @@ kbd { padding: 3px 5px; border: 1px solid #484842; border-radius: 2px; color: #c
 .staged-terminal { flex: 1; display: grid; place-content: center; text-align: center; color: #6e6e67; background: repeating-linear-gradient(135deg, #11110f 0, #11110f 8px, #151513 8px, #151513 9px); }
 .staged-terminal span { color: var(--coral); font: 300 38px "DM Mono", monospace; }
 .staged-terminal p { margin: 7px 0; font: 400 10px "DM Mono", monospace; text-transform: uppercase; letter-spacing: .08em; }
-.cut-surface { position: absolute; z-index: 5; inset: 0; background: rgba(255,105,66,.015); }
+.cut-surface { position: absolute; z-index: 5; inset: 0; }
 .cut-line { position: absolute; opacity: 0; pointer-events: none; background: var(--coral); box-shadow: 0 0 0 1px #11110f, 0 0 16px #ff694266; transition: opacity .08s; }
 .cut-surface:hover .cut-line { opacity: 1; }
 .cut-surface.vertical .cut-line { top: 0; bottom: 0; left: var(--cut, 50%); width: 2px; }
