@@ -1,26 +1,26 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
-import type { Desk } from "./types";
+import type { Deck } from "./types";
 import { Home } from "./Home";
-import { DeskView } from "./DeskView";
+import { DeckView } from "./DeckView";
 
 export default function App() {
-  const [desks, setDesks] = useState<Desk[]>([]);
-  const [active, setActive] = useState<Desk | null>(null);
+  const [decks, setDecks] = useState<Deck[]>([]);
+  const [active, setActive] = useState<Deck | null>(null);
   const [home, setHome] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    api.list().then(setDesks).catch((cause: Error) => setError(cause.message));
+    api.list().then(setDecks).catch((cause: Error) => setError(cause.message));
   }, []);
 
   const create = async (name: string) => {
     setBusy(true);
     try {
-      const desk = await api.create(name);
-      setDesks((current) => [desk, ...current]);
-      setActive(desk);
+      const deck = await api.create(name);
+      setDecks((current) => [deck, ...current]);
+      setActive(deck);
       setHome(false);
     } catch (cause) {
       setError((cause as Error).message);
@@ -44,13 +44,13 @@ export default function App() {
   };
 
   const remove = async (id: string) => {
-    if (!confirm("Delete this stored desk and stop its terminals?")) return;
+    if (!confirm("Delete this stored deck and stop its terminals?")) return;
     await api.remove(id);
-    setDesks((current) => current.filter((desk) => desk.id !== id));
+    setDecks((current) => current.filter((deck) => deck.id !== id));
     if (active?.id === id) setActive(null);
   };
 
-  const stored = (desk: Desk) => setDesks((current) => [desk, ...current.filter((item) => item.id !== desk.id)]);
+  const stored = (deck: Deck) => setDecks((current) => [deck, ...current.filter((item) => item.id !== deck.id)]);
 
-  return <>{home && <Home desks={desks} busy={busy} onCreate={create} onOpen={open} onDelete={remove} />}{active && <div className={home ? "parked-desk" : "active-desk"}><DeskView key={active.id} initial={active} onHome={() => setHome(true)} onStored={stored} /></div>}{error && <button className="global-error" onClick={() => setError("")}>{error}<span>×</span></button>}</>;
+  return <>{home && <Home decks={decks} busy={busy} onCreate={create} onOpen={open} onDelete={remove} />}{active && <div className={home ? "parked-deck" : "active-deck"}><DeckView key={active.id} initial={active} onHome={() => setHome(true)} onStored={stored} /></div>}{error && <button className="global-error" onClick={() => setError("")}>{error}<span>×</span></button>}</>;
 }

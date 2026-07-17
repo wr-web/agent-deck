@@ -22,7 +22,7 @@ type Session = {
 };
 
 const sessions = new Map<string, Session>();
-const keyFor = (deskId: string, paneId: string) => `${deskId}:${paneId}`;
+const keyFor = (deckId: string, paneId: string) => `${deckId}:${paneId}`;
 
 function shellEscape(value: string) {
   return `'${value.replaceAll("'", `'\\''`)}'`;
@@ -80,8 +80,8 @@ async function cwdFor(pid: number, fallback: string) {
   }
 }
 
-export function ensureSession(deskId: string, pane: TerminalSnapshot) {
-  const key = keyFor(deskId, pane.id);
+export function ensureSession(deckId: string, pane: TerminalSnapshot) {
+  const key = keyFor(deckId, pane.id);
   const existing = sessions.get(key);
   if (existing) return existing;
 
@@ -152,8 +152,8 @@ export function ensureSession(deskId: string, pane: TerminalSnapshot) {
   return session;
 }
 
-export function attachClient(deskId: string, pane: TerminalSnapshot, socket: WebSocket) {
-  const session = ensureSession(deskId, pane);
+export function attachClient(deckId: string, pane: TerminalSnapshot, socket: WebSocket) {
+  const session = ensureSession(deckId, pane);
   session.clients.add(socket);
   session.launchResume();
   if (session.alternateScreen) {
@@ -185,8 +185,8 @@ export function attachClient(deskId: string, pane: TerminalSnapshot, socket: Web
   socket.on("close", () => session.clients.delete(socket));
 }
 
-export async function snapshotSession(deskId: string, pane: TerminalSnapshot): Promise<TerminalSnapshot> {
-  const session = sessions.get(keyFor(deskId, pane.id));
+export async function snapshotSession(deckId: string, pane: TerminalSnapshot): Promise<TerminalSnapshot> {
+  const session = sessions.get(keyFor(deckId, pane.id));
   if (!session) return pane;
   const chain = await descendants(session.pty.pid);
   const foreground = chain.find((process) => isAgent(process.command)) || chain.at(-1);
@@ -216,15 +216,15 @@ export async function listOpenCodeSessions(cwd: string) {
   return JSON.parse(stdout) as Array<{ id: string; title: string; timeUpdated: number }>;
 }
 
-export function killSession(deskId: string, paneId: string) {
-  const key = keyFor(deskId, paneId);
+export function killSession(deckId: string, paneId: string) {
+  const key = keyFor(deckId, paneId);
   sessions.get(key)?.pty.kill();
   sessions.delete(key);
 }
 
-export function killDesk(deskId: string) {
+export function killDeck(deckId: string) {
   for (const [key, session] of sessions) {
-    if (key.startsWith(`${deskId}:`)) {
+    if (key.startsWith(`${deckId}:`)) {
       session.pty.kill();
       sessions.delete(key);
     }

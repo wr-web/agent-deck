@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Desk, LayoutNode, TerminalInfo } from "./types";
+import type { Deck, LayoutNode, TerminalInfo } from "./types";
 import { api } from "./api";
 import { CloseIcon, GridIcon, HomeIcon, MaximizeIcon, MinimizeIcon, SaveIcon, SettingsIcon, TerminalIcon, TrashIcon } from "./icons";
 import { LayoutView } from "./LayoutView";
 
-type Props = { initial: Desk; onHome: () => void; onStored: (desk: Desk) => void };
+type Props = { initial: Deck; onHome: () => void; onStored: (deck: Deck) => void };
 
 type KeyboardLockNavigator = Navigator & {
   keyboard?: {
@@ -30,10 +30,10 @@ const removePane = (node: LayoutNode, id: string): LayoutNode | null => {
   return { ...node, first, second };
 };
 
-export function DeskView({ initial, onHome, onStored }: Props) {
+export function DeckView({ initial, onHome, onStored }: Props) {
   const [persisted, setPersisted] = useState(initial);
-  const [desk, setDesk] = useState(initial);
-  const deskRef = useRef(initial);
+  const [deck, setDeck] = useState(initial);
+  const deckRef = useRef(initial);
   const savingRef = useRef(false);
   const [activePane, setActivePane] = useState(paneIds(initial.layout)[0]);
   const [editMode, setEditMode] = useState(false);
@@ -45,14 +45,14 @@ export function DeskView({ initial, onHome, onStored }: Props) {
   const [settings, setSettings] = useState(false);
   const [opencodeSessions, setOpenCodeSessions] = useState<Array<{ id: string; title: string }>>([]);
   const [fullscreen, setFullscreen] = useState(Boolean(document.fullscreenElement));
-  const ids = useMemo(() => paneIds(desk.layout), [desk.layout]);
+  const ids = useMemo(() => paneIds(deck.layout), [deck.layout]);
   const persistedIds = useMemo(() => new Set(paneIds(persisted.layout)), [persisted.layout]);
-  const dirty = JSON.stringify({ n: desk.name, l: desk.layout, t: desk.terminals }) !== JSON.stringify({ n: persisted.name, l: persisted.layout, t: persisted.terminals });
+  const dirty = JSON.stringify({ n: deck.name, l: deck.layout, t: deck.terminals }) !== JSON.stringify({ n: persisted.name, l: persisted.layout, t: persisted.terminals });
 
-  const updateDesk = (update: Desk | ((current: Desk) => Desk)) => {
-    const next = typeof update === "function" ? update(deskRef.current) : update;
-    deskRef.current = next;
-    setDesk(next);
+  const updateDeck = (update: Deck | ((current: Deck) => Deck)) => {
+    const next = typeof update === "function" ? update(deckRef.current) : update;
+    deckRef.current = next;
+    setDeck(next);
   };
 
   const store = async () => {
@@ -61,11 +61,11 @@ export function DeskView({ initial, onHome, onStored }: Props) {
     setSaving(true);
     setEditMode(false);
     try {
-      const current = deskRef.current;
+      const current = deckRef.current;
       const saved = await api.save(current.id, current.name, current.layout, current.terminals);
-      updateDesk(saved);
+      updateDeck(saved);
       setPersisted(saved);
-      setNotice("Desk stored");
+      setNotice("Deck stored");
       onStored(saved);
       setTimeout(() => setNotice(""), 1800);
     } finally {
@@ -84,7 +84,7 @@ export function DeskView({ initial, onHome, onStored }: Props) {
       if (event.key === "Escape" && editMode) {
         event.preventDefault();
         event.stopPropagation();
-        updateDesk(persisted);
+        updateDeck(persisted);
         setEditMode(false);
       }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") { event.preventDefault(); void store(); }
@@ -107,11 +107,11 @@ export function DeskView({ initial, onHome, onStored }: Props) {
     if (!settings) return;
     let cancelled = false;
     setOpenCodeSessions([]);
-    api.opencodeSessions(desk.terminals[activePane].cwd)
+    api.opencodeSessions(deck.terminals[activePane].cwd)
       .then((sessions) => { if (!cancelled) setOpenCodeSessions(sessions); })
       .catch(() => { if (!cancelled) setOpenCodeSessions([]); });
     return () => { cancelled = true; };
-  }, [activePane, desk.terminals, settings]);
+  }, [activePane, deck.terminals, settings]);
 
   const toggleFullscreen = async () => {
     const keyboard = (navigator as KeyboardLockNavigator).keyboard;
@@ -138,7 +138,7 @@ export function DeskView({ initial, onHome, onStored }: Props) {
     if (recreating) return;
     setRecreating(true);
     try {
-      await api.recreate(desk.id);
+      await api.recreate(deck.id);
       setTerminalGeneration((current) => current + 1);
       setNotice("Terminals recreated");
       setTimeout(() => setNotice(""), 1800);
@@ -150,7 +150,7 @@ export function DeskView({ initial, onHome, onStored }: Props) {
   const split = (paneId: string, ratio: number) => {
     if (savingRef.current) return;
     const newId = crypto.randomUUID();
-    updateDesk((current) => {
+    updateDeck((current) => {
       const newTerminal: TerminalInfo = { id: newId, title: `Shell ${paneIds(current.layout).length + 1}`, cwd: current.terminals[paneId]?.cwd || "", command: "", resumeCommand: "" };
       return {
         ...current,
@@ -163,22 +163,22 @@ export function DeskView({ initial, onHome, onStored }: Props) {
 
   const closePane = (id: string) => {
     if (ids.length === 1) return;
-    const layout = removePane(desk.layout, id);
+    const layout = removePane(deck.layout, id);
     if (!layout) return;
-    const terminals = { ...desk.terminals };
+    const terminals = { ...deck.terminals };
     delete terminals[id];
-    updateDesk({ ...desk, layout, terminals });
+    updateDeck({ ...deck, layout, terminals });
     if (activePane === id) setActivePane(paneIds(layout)[0]);
   };
 
-  const updateTerminal = (patch: Partial<TerminalInfo>) => updateDesk((current) => ({ ...current, terminals: { ...current.terminals, [activePane]: { ...current.terminals[activePane], ...patch } } }));
+  const updateTerminal = (patch: Partial<TerminalInfo>) => updateDeck((current) => ({ ...current, terminals: { ...current.terminals, [activePane]: { ...current.terminals[activePane], ...patch } } }));
 
   return (
-    <main className="desk-shell">
-      <div className="desk-main">
-        <header className="desk-topbar">
-          <div className="desk-identity"><span className="live-mark" /><input value={desk.name} onChange={(event) => updateDesk({ ...desk, name: event.target.value })} aria-label="Desk name" /><small>{ids.length} PANES</small></div>
-          <div className="desk-controls">
+    <main className="deck-shell">
+      <div className="deck-main">
+        <header className="deck-topbar">
+          <div className="deck-identity"><span className="live-mark" /><input value={deck.name} onChange={(event) => updateDeck({ ...deck, name: event.target.value })} aria-label="Deck name" /><small>{ids.length} PANES</small></div>
+          <div className="deck-controls">
             {editMode && <div className="edit-instructions"><span>{orientation === "vertical" ? "Vertical cut" : "Horizontal cut"}</span><kbd>RIGHT CLICK</kbd> switch <kbd>ENTER</kbd> commit <kbd>ESC</kbd> cancel</div>}
             <button className={editMode ? "active" : ""} onClick={() => setEditMode(!editMode)}><GridIcon size={17} /> {editMode ? "Editing" : "Split"}</button>
             <button disabled={recreating} onClick={() => void recreateTerminals()} title="Destroy and recreate terminals"><TerminalIcon size={17} /> {recreating ? "Recreating" : "Recreate"}</button>
@@ -187,20 +187,20 @@ export function DeskView({ initial, onHome, onStored }: Props) {
           </div>
         </header>
         <div className={`layout-canvas ${editMode ? "editing" : ""}`}>
-          <LayoutView key={terminalGeneration} node={desk.layout} desk={desk} persistedIds={persistedIds} activePane={activePane} editMode={editMode} orientation={orientation} onSelect={setActivePane} onSplit={split} onToggleOrientation={() => setOrientation((value) => value === "vertical" ? "horizontal" : "vertical")} onRatio={(id, ratio) => updateDesk((current) => ({ ...current, layout: updateNode(current.layout, id, (node) => ({ ...node, ratio }) as LayoutNode) }))} />
+          <LayoutView key={terminalGeneration} node={deck.layout} deck={deck} persistedIds={persistedIds} activePane={activePane} editMode={editMode} orientation={orientation} onSelect={setActivePane} onSplit={split} onToggleOrientation={() => setOrientation((value) => value === "vertical" ? "horizontal" : "vertical")} onRatio={(id, ratio) => updateDeck((current) => ({ ...current, layout: updateNode(current.layout, id, (node) => ({ ...node, ratio }) as LayoutNode) }))} />
         </div>
         {notice && <div className="toast"><span>●</span>{notice}</div>}
       </div>
-      <nav className="desk-nav" aria-label="Desk navigation">
+      <nav className="deck-nav" aria-label="Deck navigation">
         <button className="nav-logo" onClick={onHome} title="Home"><TerminalIcon size={23} /></button>
         <div className="nav-rule" />
-        <div className="pane-tabs">{ids.map((id, index) => <button key={id} className={activePane === id ? "active" : ""} onClick={() => setActivePane(id)} title={desk.terminals[id].title}><span className="tab-index">{String(index + 1).padStart(2, "0")}</span><span className="tab-screen"><i /><i /><i /></span><small>{desk.terminals[id].title.replace(/^Shell\s*/, "S")}</small></button>)}</div>
+        <div className="pane-tabs">{ids.map((id, index) => <button key={id} className={activePane === id ? "active" : ""} onClick={() => setActivePane(id)} title={deck.terminals[id].title}><span className="tab-index">{String(index + 1).padStart(2, "0")}</span><span className="tab-screen"><i /><i /><i /></span><small>{deck.terminals[id].title.replace(/^Shell\s*/, "S")}</small></button>)}</div>
         <div className="nav-bottom">
           <button className={settings ? "active" : ""} onClick={() => setSettings(!settings)} title="Pane settings"><SettingsIcon /></button>
           <button onClick={onHome} title="Home"><HomeIcon /></button>
         </div>
       </nav>
-      {settings && <aside className="settings-panel"><header><div><small>PANE SETTINGS</small><strong>{desk.terminals[activePane].title}</strong></div><button onClick={() => setSettings(false)}><CloseIcon /></button></header><label>Label<input value={desk.terminals[activePane].title} onChange={(event) => updateTerminal({ title: event.target.value })} /></label><label>Working directory<input value={desk.terminals[activePane].cwd} onChange={(event) => updateTerminal({ cwd: event.target.value })} /></label><label>OpenCode session<select value={desk.terminals[activePane].resumeCommand.match(/--session(?:=|\s+)["']?(ses_[A-Za-z0-9]+)/)?.[1] || ""} onChange={(event) => updateTerminal({ resumeCommand: event.target.value ? `opencode --session '${event.target.value}'` : "opencode" })}><option value="">Not pinned</option>{opencodeSessions.map((session) => <option key={session.id} value={session.id}>{session.title} ({session.id})</option>)}</select></label><label>Resume command<textarea rows={4} value={desk.terminals[activePane].resumeCommand} onChange={(event) => updateTerminal({ resumeCommand: event.target.value })} placeholder="Detected when you store" /></label><p>Pin an OpenCode session before Store to make Recreate restore that exact conversation.</p><button className="danger-action" disabled={ids.length === 1} onClick={() => { closePane(activePane); setSettings(false); }}><TrashIcon size={16} /> Remove pane</button></aside>}
+      {settings && <aside className="settings-panel"><header><div><small>PANE SETTINGS</small><strong>{deck.terminals[activePane].title}</strong></div><button onClick={() => setSettings(false)}><CloseIcon /></button></header><label>Label<input value={deck.terminals[activePane].title} onChange={(event) => updateTerminal({ title: event.target.value })} /></label><label>Working directory<input value={deck.terminals[activePane].cwd} onChange={(event) => updateTerminal({ cwd: event.target.value })} /></label><label>OpenCode session<select value={deck.terminals[activePane].resumeCommand.match(/--session(?:=|\s+)["']?(ses_[A-Za-z0-9]+)/)?.[1] || ""} onChange={(event) => updateTerminal({ resumeCommand: event.target.value ? `opencode --session '${event.target.value}'` : "opencode" })}><option value="">Not pinned</option>{opencodeSessions.map((session) => <option key={session.id} value={session.id}>{session.title} ({session.id})</option>)}</select></label><label>Resume command<textarea rows={4} value={deck.terminals[activePane].resumeCommand} onChange={(event) => updateTerminal({ resumeCommand: event.target.value })} placeholder="Detected when you store" /></label><p>Pin an OpenCode session before Store to make Recreate restore that exact conversation.</p><button className="danger-action" disabled={ids.length === 1} onClick={() => { closePane(activePane); setSettings(false); }}><TrashIcon size={16} /> Remove pane</button></aside>}
     </main>
   );
 }

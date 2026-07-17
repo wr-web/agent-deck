@@ -5,14 +5,14 @@ import "@xterm/xterm/css/xterm.css";
 import type { TerminalInfo } from "./types";
 
 type Props = {
-  deskId: string;
+  deckId: string;
   terminal: TerminalInfo;
   active: boolean;
   staged: boolean;
   onSelect: () => void;
 };
 
-export function TerminalPane({ deskId, terminal, active, staged, onSelect }: Props) {
+export function TerminalPane({ deckId, terminal, active, staged, onSelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const [status, setStatus] = useState<"connecting" | "online" | "offline">(staged ? "offline" : "connecting");
@@ -69,7 +69,7 @@ export function TerminalPane({ deskId, terminal, active, staged, onSelect }: Pro
     };
     const connect = () => {
       setStatus("connecting");
-      socket = new WebSocket(`${protocol}://${location.host}/ws?desk=${encodeURIComponent(deskId)}&pane=${encodeURIComponent(terminal.id)}`);
+      socket = new WebSocket(`${protocol}://${location.host}/ws?deck=${encodeURIComponent(deckId)}&pane=${encodeURIComponent(terminal.id)}`);
       socket.addEventListener("open", () => {
         setStatus("online");
         sendSize();
@@ -112,7 +112,7 @@ export function TerminalPane({ deskId, terminal, active, staged, onSelect }: Pro
       term.dispose();
       termRef.current = null;
     };
-  }, [deskId, staged, terminal.id]);
+  }, [deckId, staged, terminal.id]);
 
   useEffect(() => {
     if (active) termRef.current?.focus();

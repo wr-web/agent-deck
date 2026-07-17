@@ -4,9 +4,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
 import { WebSocketServer } from "ws";
-import { deleteDesk, getDesk, listDesks, saveDesk } from "./store.js";
-import { attachClient, killDesk, killSession, listOpenCodeSessions, snapshotSession } from "./pty-manager.js";
-import type { Desk, LayoutNode, TerminalSnapshot } from "./types.js";
+import { deleteDeck, getDeck, listDecks, saveDeck } from "./store.js";
+import { attachClient, killDeck, killSession, listOpenCodeSessions, snapshotSession } from "./pty-manager.js";
+import type { Deck, LayoutNode, TerminalSnapshot } from "./types.js";
 
 const app = express();
 const port = Number(process.env.PORT || 4317);
@@ -17,9 +17,9 @@ const paneIds = (node: LayoutNode): string[] =>
 
 app.get("/api/health", (_request, response) => response.json({ ok: true, shell: process.env.SHELL || "/bin/zsh" }));
 
-app.get("/api/desks", async (_request, response, next) => {
+app.get("/api/decks", async (_request, response, next) => {
   try {
-    response.json(await listDesks());
+    response.json(await listDecks());
   } catch (error) {
     next(error);
   }
@@ -35,14 +35,14 @@ app.get("/api/opencode/sessions", async (request, response, next) => {
   }
 });
 
-app.post("/api/desks", async (request, response, next) => {
+app.post("/api/decks", async (request, response, next) => {
   try {
     const id = crypto.randomUUID();
     const paneId = crypto.randomUUID();
     const now = new Date().toISOString();
-    const desk: Desk = {
+    const deck: Deck = {
       id,
-      name: typeof request.body?.name === "string" && request.body.name.trim() ? request.body.name.trim() : "Untitled desk",
+      name: typeof request.body?.name === "string" && request.body.name.trim() ? request.body.name.trim() : "Untitled deck",
       createdAt: now,
       updatedAt: now,
       layout: { type: "pane", id: paneId },
@@ -50,27 +50,27 @@ app.post("/api/desks", async (request, response, next) => {
         [paneId]: { id: paneId, title: "Shell 1", cwd: os.homedir(), command: "", resumeCommand: "" },
       },
     };
-    await saveDesk(desk);
-    response.status(201).json(desk);
+    await saveDeck(deck);
+    response.status(201).json(deck);
   } catch (error) {
     next(error);
   }
 });
 
-app.get("/api/desks/:id", async (request, response, next) => {
+app.get("/api/decks/:id", async (request, response, next) => {
   try {
-    const desk = await getDesk(request.params.id);
-    if (!desk) return response.status(404).json({ error: "Desk not found" });
-    response.json(desk);
+    const deck = await getDeck(request.params.id);
+    if (!deck) return response.status(404).json({ error: "Deck not found" });
+    response.json(deck);
   } catch (error) {
     next(error);
   }
 });
 
-app.put("/api/desks/:id", async (request, response, next) => {
+app.put("/api/decks/:id", async (request, response, next) => {
   try {
-    const current = await getDesk(request.params.id);
-    if (!current) return response.status(404).json({ error: "Desk not found" });
+    const current = await getDeck(request.params.id);
+    if (!current) return response.status(404).json({ error: "Deck not found" });
     const layout = request.body.layout as LayoutNode;
     const incoming = (request.body.terminals || {}) as Record<string, TerminalSnapshot>;
     const ids = paneIds(layout);
@@ -88,35 +88,35 @@ app.put("/api/desks/:id", async (request, response, next) => {
         return snapshotSession(current.id, pane);
       }),
     );
-    const desk: Desk = {
+    const deck: Deck = {
       ...current,
       name: typeof request.body.name === "string" ? request.body.name.trim() || current.name : current.name,
       updatedAt: new Date().toISOString(),
       layout,
       terminals: Object.fromEntries(snapshots.map((pane) => [pane.id, pane])),
     };
-    await saveDesk(desk);
-    response.json(desk);
+    await saveDeck(deck);
+    response.json(deck);
   } catch (error) {
     next(error);
   }
 });
 
-app.post("/api/desks/:id/recreate", async (request, response, next) => {
+app.post("/api/decks/:id/recreate", async (request, response, next) => {
   try {
-    const desk = await getDesk(request.params.id);
-    if (!desk) return response.status(404).json({ error: "Desk not found" });
-    killDesk(desk.id);
+    const deck = await getDeck(request.params.id);
+    if (!deck) return response.status(404).json({ error: "Deck not found" });
+    killDeck(deck.id);
     response.status(204).end();
   } catch (error) {
     next(error);
   }
 });
 
-app.delete("/api/desks/:id", async (request, response, next) => {
+app.delete("/api/decks/:id", async (request, response, next) => {
   try {
-    killDesk(request.params.id);
-    await deleteDesk(request.params.id);
+    killDeck(request.params.id);
+    await deleteDeck(request.params.id);
     response.status(204).end();
   } catch (error) {
     next(error);
@@ -141,11 +141,11 @@ const server = app.listen(port, "127.0.0.1", () => {
 const webSockets = new WebSocketServer({ server, path: "/ws" });
 webSockets.on("connection", async (socket, request) => {
   const url = new URL(request.url || "", `http://${request.headers.host}`);
-  const deskId = url.searchParams.get("desk");
+  const deckId = url.searchParams.get("deck");
   const paneId = url.searchParams.get("pane");
-  if (!deskId || !paneId) return socket.close(1008, "Missing desk or pane");
-  const desk = await getDesk(deskId);
-  const pane = desk?.terminals[paneId];
-  if (!desk || !pane) return socket.close(1008, "Unknown desk or pane");
-  attachClient(deskId, pane, socket);
+  if (!deckId || !paneId) return socket.close(1008, "Missing deck or pane");
+  const deck = await getDeck(deckId);
+  const pane = deck?.terminals[paneId];
+  if (!deck || !pane) return socket.close(1008, "Unknown deck or pane");
+  attachClient(deckId, pane, socket);
 });

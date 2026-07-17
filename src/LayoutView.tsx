@@ -1,10 +1,10 @@
 import { useRef } from "react";
-import type { Desk, LayoutNode } from "./types";
+import type { Deck, LayoutNode } from "./types";
 import { TerminalPane } from "./TerminalPane";
 
 type Props = {
   node: LayoutNode;
-  desk: Desk;
+  deck: Deck;
   persistedIds: Set<string>;
   activePane: string;
   editMode: boolean;
@@ -21,10 +21,10 @@ export function LayoutView(props: Props) {
   return <SplitNode {...props} node={node} />;
 }
 
-function PaneNode({ id, desk, persistedIds, activePane, editMode, orientation, onSelect, onSplit, onToggleOrientation }: Props & { id: string }) {
+function PaneNode({ id, deck, persistedIds, activePane, editMode, orientation, onSelect, onSplit, onToggleOrientation }: Props & { id: string }) {
   const paneRef = useRef<HTMLDivElement>(null);
   const lineRef = useRef<HTMLDivElement>(null);
-  const terminal = desk.terminals[id];
+  const terminal = deck.terminals[id];
 
   const movePreview = (event: React.MouseEvent) => {
     if (!editMode || !paneRef.current || !lineRef.current) return;
@@ -42,7 +42,7 @@ function PaneNode({ id, desk, persistedIds, activePane, editMode, orientation, o
 
   return (
     <div className="pane-node" ref={paneRef} onMouseMove={movePreview}>
-      <TerminalPane deskId={desk.id} terminal={terminal} active={activePane === id} staged={!persistedIds.has(id)} onSelect={() => onSelect(id)} />
+      <TerminalPane deckId={deck.id} terminal={terminal} active={activePane === id} staged={!persistedIds.has(id)} onSelect={() => onSelect(id)} />
       {editMode && (
         <div className={`cut-surface ${orientation}`} onClick={split} onContextMenu={(event) => { event.preventDefault(); onToggleOrientation(); }}>
           <div className="cut-line" ref={lineRef}><span>{orientation === "vertical" ? "VERTICAL" : "HORIZONTAL"}</span></div>

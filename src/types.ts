@@ -17,7 +17,7 @@ export type TerminalInfo = {
   resumeCommand: string;
 };
 
-export type Desk = {
+export type Deck = {
   id: string;
   name: string;
   createdAt: string;
