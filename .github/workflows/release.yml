@@ -1,0 +1,105 @@
+name: Build and Release
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x64
+            ext: tar.gz
+          - os: macos-latest
+            target: macos-arm64
+            ext: tar.gz
+          - os: macos-13
+            target: macos-x64
+            ext: tar.gz
+          - os: windows-latest
+            target: win-x64
+            ext: zip
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - run: node scripts/bundle-server.mjs
+
+      - run: npm prune --omit=dev
+
+      - name: Layout archive
+        shell: bash
+        run: |
+          mkdir -p archive/dist
+          cp -r dist/* archive/dist/
+          cp dist-server/server.cjs archive/
+          cp -r node_modules archive/
+
+      - name: Bundle Node.js binary (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p archive/node
+          cp "$(which node)" archive/node/node
+
+      - name: Bundle Node.js binary (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p archive/node
+          nodeDir=$(dirname "$(which node)")
+          cp "$nodeDir/node.exe" archive/node/
+          # core DLLs needed by node.exe on Windows
+          for dll in "vcruntime140.dll" "vcruntime140_1.dll" "vcruntime140_clr0400.dll" "msvcp140.dll" "msvcp140_1.dll" "msvcp140_2.dll" "msvcp140_atomic_wait.dll" "msvcp140_codecvt_ids.dll" "concrt140.dll"; do
+            [ -f "$nodeDir/$dll" ] && cp "$nodeDir/$dll" archive/node/ || true
+          done
+
+      - name: Launcher (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          cat > archive/agent-deck << 'SCRIPT'
+          #!/bin/bash
+          DIR="$(cd "$(dirname "$0")" && pwd)"
+          PUBLIC_DIR="$DIR/dist" exec "$DIR/node/node" "$DIR/server.cjs" "$@"
+          SCRIPT
+          chmod +x archive/agent-deck
+
+      - name: Launcher (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          cat > archive/agent-deck.bat << 'SCRIPT'
+          @echo off
+          set DIR=%~dp0
+          set PUBLIC_DIR=%DIR%dist
+          "%DIR%node\node.exe" "%DIR%server.cjs" %*
+          SCRIPT
+
+      - name: Package archive
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          cd archive
+          if [ "${{ matrix.ext }}" = "zip" ]; then
+            7z a "../agent-deck-v${VERSION}-${{ matrix.target }}.zip" .
+          else
+            tar czf "../agent-deck-v${VERSION}-${{ matrix.target }}.tar.gz" .
+          fi
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: agent-deck-*

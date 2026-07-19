@@ -3,8 +3,13 @@ import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = path.dirname(fileURLToPath(import.meta.url));
-const dataDir = path.resolve(root, "../data");
+const dataDir = (() => {
+  try {
+    return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../data");
+  } catch {
+    return path.resolve(process.cwd(), "data");
+  }
+})();
 if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true });
 
 const db = new DatabaseSync(path.join(dataDir, "sessions.db"));

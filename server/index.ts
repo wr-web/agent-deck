@@ -125,9 +125,16 @@ app.delete("/api/decks/:id", async (request, response, next) => {
 });
 
 if (process.env.NODE_ENV === "production") {
-  const root = path.dirname(fileURLToPath(import.meta.url));
-  app.use(express.static(path.resolve(root, "../dist")));
-  app.get("*splat", (_request, response) => response.sendFile(path.resolve(root, "../dist/index.html")));
+  let dist = process.env.PUBLIC_DIR;
+  if (!dist) {
+    try {
+      dist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../dist");
+    } catch {
+      dist = path.resolve(process.cwd(), "dist");
+    }
+  }
+  app.use(express.static(dist));
+  app.get("*splat", (_request, response) => response.sendFile(path.resolve(dist, "index.html")));
 }
 
 app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
